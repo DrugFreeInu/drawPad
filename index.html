@@ -4,157 +4,74 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrawPad — Live</title>
+
+<!-- Strict CSP to block cookies, network, and external scripts -->
+<meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data:;
+        connect-src 'none';
+        frame-ancestors 'none';
+        object-src 'none';
+        form-action 'none';
+        base-uri 'self';
+      ">
+
 <style>
-html, body {
-  margin:0;
-  padding:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#000;
-  font-family:system-ui;
-}
-canvas {
-  display:block;
-  width:100%;
-  height:100%;
-  touch-action:none;
-}
-#codePanel {
-  position:fixed;
-  top:0;
-  right:0;
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.95);
-  color:#8fbfff;
-  font-family:monospace;
-  font-size:14px;
-  padding:20px;
-  overflow:auto;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity 0.25s ease;
-  white-space:pre-wrap;
-  box-sizing:border-box;
-}
-#toggleCode {
-  position:fixed;
-  top:20px;
-  right:20px;
-  z-index:9999;
-  padding:10px 14px;
-  border-radius:20px;
-  background:rgba(18,30,60,0.36);
-  color:#8fbfff;
-  font-weight:700;
-  cursor:pointer;
-  border:none;
-}
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    background: #000;
+    overflow: hidden;
+  }
+
+  iframe.layer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: auto;
+    opacity: 1;
+    transition: opacity .45s ease, z-index .2s;
+  }
+
+  /* hide code layer initially */
+  iframe#layer-code { display: none; }
 </style>
 </head>
 <body>
 
-<canvas id="draw"></canvas>
-<div id="codePanel"></div>
-<button id="toggleCode">Show Code</button>
+<!-- DrawPad layer -->
+<iframe id="layer-drawpad" class="layer" data-src="drawpad.html" title="Drawpad"></iframe>
+
+<!-- Code export layer (hidden) -->
+<iframe id="layer-code" class="layer" data-src="code.html" title="Code Export"></iframe>
 
 <script>
-const canvas = document.getElementById('draw');
-const ctx = canvas.getContext('2d');
-const codePanel = document.getElementById('codePanel');
-const toggleBtn = document.getElementById('toggleCode');
-
-// store points for minimal code generation
-const points = [];
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  drawGrid();
-}
-
-function drawGrid(){
-  const step = 50;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle='rgba(143,191,255,0.08)';
-  ctx.lineWidth=1;
-  for(let x=0;x<canvas.width;x+=step){
-    ctx.beginPath();
-    ctx.moveTo(x,0);
-    ctx.lineTo(x,canvas.height);
-    ctx.stroke();
-  }
-  for(let y=0;y<canvas.height;y+=step){
-    ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(canvas.width,y);
-    ctx.stroke();
-  }
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-// free-hand drawing
-let drawing=false;
-
-function drawPoint(x,y){
-  ctx.fillStyle='#8fbfff';
-  ctx.beginPath();
-  ctx.arc(x,y,4,0,Math.PI*2);
-  ctx.fill();
-  points.push([x,y]);
-}
-
-// mouse events
-canvas.addEventListener('mousedown',e=>drawing=true);
-canvas.addEventListener('mouseup',e=>drawing=false);
-canvas.addEventListener('mousemove',e=>{
-  if(drawing) drawPoint(e.clientX,e.clientY);
-});
-
-// touch events
-canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  drawing=true;
-  const t=e.touches[0];
-  drawPoint(t.clientX,t.clientY);
-});
-canvas.addEventListener('touchend',e=>{
-  e.preventDefault();
-  drawing=false;
-});
-canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  if(drawing){
-    const t=e.touches[0];
-    drawPoint(t.clientX,t.clientY);
-  }
-});
-
-// toggle code panel
-let visible=false;
-toggleBtn.addEventListener('click', ()=>{
-  visible=!visible;
-  codePanel.style.opacity = visible ? 1 : 0;
-  codePanel.style.pointerEvents = visible ? 'auto' : 'none';
-  toggleBtn.textContent = visible ? 'Hide Code' : 'Show Code';
-  if(visible) updateCode(); // regenerate code when shown
-});
-
-// generate minimal copy/paste-ready code
-function updateCode(){
-  let code = "const canvas=document.createElement('canvas');\n";
-  code += "const ctx=canvas.getContext('2d');\n";
-  code += "canvas.width=window.innerWidth;\ncanvas.height=window.innerHeight;\ndocument.body.appendChild(canvas);\n";
-  points.forEach(p=>{
-    code += `ctx.fillRect(${p[0]},${p[1]},4,4);\n`;
+  // Anti-cookie enforcement
+  Object.defineProperty(document, 'cookie', {
+    get: () => "",
+    set: () => { console.warn("Cookies blocked"); }
   });
-  codePanel.textContent = code;
-}
 
-// anti-cookie enforcement
-Object.defineProperty(document,'cookie',{get:()=>"",set:()=>{console.warn("Cookies blocked");}});
+  // Auto-cache both layers
+  (function(){
+    const timestamp = Date.now();
+    document.querySelectorAll('iframe.layer').forEach(f => {
+      const src = f.dataset.src || '';
+      if(!src.includes('://')) f.src = src + '?v=' + timestamp;
+    });
+
+    // Auto-cache self
+    if(location.search.indexOf('v=') === -1){
+      history.replaceState(null, '', location.pathname + '?v=' + timestamp);
+    }
+  })();
 </script>
+
 </body>
 </html>
