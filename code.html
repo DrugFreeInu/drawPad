@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrawPad — Code Export</title>
+<style>
+  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; color:#8fbfff; font-family:system-ui; }
+  canvas { display:block; width:100%; height:100%; }
+  #export { position:fixed; top:20px; right:20px; padding:10px 14px; background:rgba(18,30,60,0.36); color:#8fbfff; font-weight:700; border-radius:20px; cursor:pointer; z-index:9999; }
+  pre { position:fixed; bottom:20px; left:20px; right:20px; max-height:40%; overflow:auto; background:rgba(0,0,0,0.8); padding:10px; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<canvas id="draw"></canvas>
+<div id="export">Export Code</div>
+<pre id="codeOutput"></pre>
+
+<script>
+const canvas = document.getElementById('draw');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// store points for code generation
+let points = [];
+
+// drawing
+let drawing = false;
+canvas.addEventListener('mousedown', e => drawing = true);
+canvas.addEventListener('mouseup', e => drawing = false);
+canvas.addEventListener('mousemove', e => {
+  if(!drawing) return;
+  const x = e.clientX, y = e.clientY;
+  points.push({x, y});
+  ctx.fillStyle = '#8fbfff';
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI*2);
+  ctx.fill();
+});
+
+// touch support
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; drawTouch(e.touches[0]); });
+canvas.addEventListener('touchend', e => { e.preventDefault(); drawing = false; });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if(drawing) drawTouch(e.touches[0]); });
+function drawTouch(touch) {
+  const x = touch.clientX, y = touch.clientY;
+  points.push({x, y});
+  ctx.fillStyle = '#8fbfff';
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// export minimal code
+const exportBtn = document.getElementById('export');
+const codeOutput = document.getElementById('codeOutput');
+
+exportBtn.addEventListener('click', () => {
+  // create minimal JS code to redraw points
+  const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
+  codeOutput.textContent = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
+});
+</script>
+</body>
+</html>
