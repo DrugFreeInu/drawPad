@@ -3,85 +3,77 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrawPad</title>
+<title>DrawPad — Live</title>
+
+<!-- Strict CSP to block cookies and network -->
+<meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data:;
+        connect-src 'none';
+        frame-ancestors 'none';
+        object-src 'none';
+        form-action 'none';
+        base-uri 'self';
+      ">
+
 <style>
-  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; }
-  canvas { display:block; width:100%; height:100%; touch-action: none; } /* disable default gestures */
+  html, body {
+    height:100%;
+    width:100%;
+    margin:0;
+    background:#000;
+    overflow:hidden;
+  }
+  iframe {
+    position: fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    border:0;
+    pointer-events:auto;
+    transition: opacity 0.3s ease;
+  }
+  #layer-drawpad { z-index:1; opacity:1; }
+  #layer-code { z-index:2; opacity:0; }
 </style>
 </head>
 <body>
-<canvas id="draw"></canvas>
+
+<!-- Drawpad layer -->
+<iframe id="layer-drawpad" src="drawpad.html"></iframe>
+
+<!-- Code layer (hidden initially) -->
+<iframe id="layer-code" src="code.html"></iframe>
+
+<!-- Simple toggle button for code layer -->
+<button id="toggleCode" style="position:fixed;top:20px;right:20px;z-index:9999;padding:10px 14px;border-radius:20px;background:rgba(18,30,60,0.36);color:#8fbfff;font-weight:700;cursor:pointer;">Show Code</button>
 
 <script>
-const canvas = document.getElementById('draw');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+  // Anti-cookie enforcement
+  Object.defineProperty(document, 'cookie', {
+    get: () => "",
+    set: () => { console.warn("Cookies blocked"); }
+  });
 
-// faint grid background
-const step = 50;
-ctx.strokeStyle = 'rgba(143,191,255,0.08)';
-ctx.lineWidth = 1;
-for(let x=0; x<canvas.width; x+=step){
-  ctx.beginPath();
-  ctx.moveTo(x,0);
-  ctx.lineTo(x,canvas.height);
-  ctx.stroke();
-}
-for(let y=0; y<canvas.height; y+=step){
-  ctx.beginPath();
-  ctx.moveTo(0,y);
-  ctx.lineTo(canvas.width,y);
-  ctx.stroke();
-}
+  const codeLayer = document.getElementById('layer-code');
+  const toggleBtn = document.getElementById('toggleCode');
+  let visible = false;
 
-// free-hand drawing
-let drawing = false;
+  toggleBtn.addEventListener('click', () => {
+    visible = !visible;
+    codeLayer.style.opacity = visible ? 1 : 0;
+    toggleBtn.textContent = visible ? 'Hide Code' : 'Show Code';
+  });
 
-// mouse events
-canvas.addEventListener('mousedown', e => drawing = true);
-canvas.addEventListener('mouseup', e => drawing = false);
-canvas.addEventListener('mousemove', e => {
-  if(!drawing) return;
-  ctx.fillStyle = '#8fbfff';
-  ctx.beginPath();
-  ctx.arc(e.clientX, e.clientY, 4, 0, Math.PI*2);
-  ctx.fill();
-});
-
-// touch events
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  drawing = true;
-  const touch = e.touches[0];
-  drawPoint(touch.clientX, touch.clientY);
-});
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  drawing = false;
-});
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if(!drawing) return;
-  const touch = e.touches[0];
-  drawPoint(touch.clientX, touch.clientY);
-});
-
-// helper function
-function drawPoint(x, y) {
-  ctx.fillStyle = '#8fbfff';
-  ctx.beginPath();
-  ctx.arc(x, y, 4, 0, Math.PI*2);
-  ctx.fill();
-}
-
-// optional: resize canvas on window resize
-window.addEventListener('resize', () => {
-  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  ctx.putImageData(imgData, 0, 0);
-});
+  // auto-cache layers by appending timestamp
+  const timestamp = Date.now();
+  ['layer-drawpad','layer-code'].forEach(id => {
+    const f = document.getElementById(id);
+    f.src = f.src + '?v=' + timestamp;
+  });
 </script>
 </body>
 </html>
