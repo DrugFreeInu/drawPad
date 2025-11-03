@@ -5,28 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrawPad — Code Export</title>
 <style>
-html, body { 
-  margin:0; 
-  height:100%; 
-  width:100%; 
-  overflow:hidden; 
-  background:#000; 
-  color:#8fbfff; 
-  font-family:system-ui; 
-}
+html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; font-family:system-ui; }
 canvas { display:block; width:100%; height:100%; touch-action:none; }
-#export { 
-  position:fixed; 
-  top:20px; 
-  right:20px; 
-  padding:10px 14px; 
-  background:rgba(18,30,60,0.36); 
-  color:#8fbfff; 
-  font-weight:700; 
-  border-radius:20px; 
-  cursor:pointer; 
-  z-index:9999; 
-  user-select:none;
+#export {
+  position:fixed; top:20px; right:20px; padding:10px 14px;
+  background: rgba(18,30,60,0.36); color:#8fbfff; font-weight:700;
+  border-radius:20px; cursor:pointer; z-index:9999; user-select:none;
 }
 </style>
 </head>
@@ -41,27 +25,11 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// store drawn points
 let points = [];
-
-// drawing state
 let drawing = false;
 
-// mouse events
-canvas.addEventListener('mousedown', () => drawing = true);
-canvas.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mousemove', e => {
-  if(!drawing) return;
-  drawPoint(e.clientX, e.clientY);
-});
-
-// touch events
-canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; drawTouch(e.touches[0]); });
-canvas.addEventListener('touchend', e => { e.preventDefault(); drawing = false; });
-canvas.addEventListener('touchmove', e => { e.preventDefault(); if(drawing) drawTouch(e.touches[0]); });
-
-// draw helpers
-function drawPoint(x, y) {
+// --- Drawing ---
+function drawPoint(x, y){
   points.push({x, y});
   ctx.fillStyle = '#8fbfff';
   ctx.beginPath();
@@ -69,36 +37,41 @@ function drawPoint(x, y) {
   ctx.fill();
 }
 
-function drawTouch(touch) {
-  drawPoint(touch.clientX, touch.clientY);
-}
+// Mouse events
+canvas.addEventListener('mousedown', ()=>drawing=true);
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('mousemove', e=>{ if(drawing) drawPoint(e.clientX, e.clientY); });
 
-// Copy code button functionality
+// Touch events
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; drawTouch(e.touches[0]); });
+canvas.addEventListener('touchend', e=>{ e.preventDefault(); drawing=false; });
+canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(drawing) drawTouch(e.touches[0]); });
+function drawTouch(touch){ drawPoint(touch.clientX, touch.clientY); }
+
+// --- Copy Code ---
 const exportBtn = document.getElementById('export');
-
-function copyCode() {
-  const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
-  const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
-  
-  navigator.clipboard.writeText(fullCode).then(() => {
-    exportBtn.textContent = "Copied!";
-    setTimeout(() => exportBtn.textContent = "Copy Code", 1000);
-  }).catch(() => {
-    exportBtn.textContent = "Failed!";
-    setTimeout(() => exportBtn.textContent = "Copy Code", 1000);
+function copyCode(){
+  const codeLines = points.map(p=>`ctx.fillRect(${p.x},${p.y},4,4);`);
+  const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n`+codeLines.join('\n');
+  navigator.clipboard.writeText(fullCode).then(()=>{
+    exportBtn.textContent="Copied!";
+    setTimeout(()=>exportBtn.textContent="Copy Code",1000);
+  }).catch(()=>{
+    exportBtn.textContent="Failed!";
+    setTimeout(()=>exportBtn.textContent="Copy Code",1000);
   });
 }
 
-// support both mouse click and touch
+// click and touch support
 exportBtn.addEventListener('click', copyCode);
-exportBtn.addEventListener('touchstart', e => { e.preventDefault(); copyCode(); });
+exportBtn.addEventListener('touchstart', e=>{ e.preventDefault(); copyCode(); });
 
-// optional: resize canvas without losing drawing
-window.addEventListener('resize', () => {
-  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+// --- Resize ---
+window.addEventListener('resize', ()=>{
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height);
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  ctx.putImageData(imgData,0,0);
+  ctx.putImageData(data,0,0);
 });
 </script>
 </body>
