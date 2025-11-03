@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrawPad</title>
 <style>
-  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; }
+  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:transparent; }
   canvas { display:block; width:100%; height:100%; touch-action:none; }
 </style>
 </head>
@@ -18,32 +18,13 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// faint grid
-const step = 50;
-ctx.strokeStyle = 'rgba(143,191,255,0.08)';
-ctx.lineWidth = 1;
-function drawGrid() {
-  for(let x=0;x<canvas.width;x+=step){
-    ctx.beginPath();
-    ctx.moveTo(x,0);
-    ctx.lineTo(x,canvas.height);
-    ctx.stroke();
-  }
-  for(let y=0;y<canvas.height;y+=step){
-    ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(canvas.width,y);
-    ctx.stroke();
-  }
-}
-drawGrid();
-
-// track points
+// store points for parent code export
 let points = [];
 
-// drawing
+// drawing state
 let drawing = false;
 
+// mouse events
 canvas.addEventListener('mousedown', e => drawing = true);
 canvas.addEventListener('mouseup', e => drawing = false);
 canvas.addEventListener('mousemove', e => {
@@ -51,6 +32,7 @@ canvas.addEventListener('mousemove', e => {
   drawPoint(e.clientX, e.clientY);
 });
 
+// touch events
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   drawing = true;
@@ -66,29 +48,28 @@ canvas.addEventListener('touchmove', e => {
   drawTouch(e.touches[0]);
 });
 
-function drawPoint(x,y){
-  points.push({x,y});
-  ctx.fillStyle='#8fbfff';
+// draw point helper
+function drawPoint(x, y) {
+  points.push({x, y});
+  ctx.fillStyle = '#8fbfff';
   ctx.beginPath();
-  ctx.arc(x,y,4,0,Math.PI*2);
+  ctx.arc(x, y, 4, 0, Math.PI*2);
   ctx.fill();
 }
-
-function drawTouch(touch){
+function drawTouch(touch) {
   drawPoint(touch.clientX, touch.clientY);
 }
 
-// resize canvas and redraw grid
-window.addEventListener('resize', ()=>{
-  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+// resize canvas but keep drawn points
+window.addEventListener('resize', () => {
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  ctx.putImageData(imgData,0,0);
-  drawGrid();
+  ctx.putImageData(imgData, 0, 0);
 });
 
-// communicate points to parent
-window.addEventListener('message', e=>{
+// respond to parent asking for points
+window.addEventListener('message', e => {
   if(e.data?.type === 'getPoints'){
     e.source.postMessage({type:'sendPoints', points}, e.origin);
   }
