@@ -6,7 +6,7 @@
 <title>DrawPad</title>
 <style>
   html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; }
-  canvas { display:block; width:100%; height:100%; }
+  canvas { display:block; width:100%; height:100%; touch-action: none; } /* disable default gestures */
 </style>
 </head>
 <body>
@@ -18,7 +18,7 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Draw a subtle grid or faint background so it’s not just black
+// faint grid background
 const step = 50;
 ctx.strokeStyle = 'rgba(143,191,255,0.08)';
 ctx.lineWidth = 1;
@@ -35,8 +35,10 @@ for(let y=0; y<canvas.height; y+=step){
   ctx.stroke();
 }
 
-// basic free-hand drawing
+// free-hand drawing
 let drawing = false;
+
+// mouse events
 canvas.addEventListener('mousedown', e => drawing = true);
 canvas.addEventListener('mouseup', e => drawing = false);
 canvas.addEventListener('mousemove', e => {
@@ -46,6 +48,32 @@ canvas.addEventListener('mousemove', e => {
   ctx.arc(e.clientX, e.clientY, 4, 0, Math.PI*2);
   ctx.fill();
 });
+
+// touch events
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  drawing = true;
+  const touch = e.touches[0];
+  drawPoint(touch.clientX, touch.clientY);
+});
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  drawing = false;
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if(!drawing) return;
+  const touch = e.touches[0];
+  drawPoint(touch.clientX, touch.clientY);
+});
+
+// helper function
+function drawPoint(x, y) {
+  ctx.fillStyle = '#8fbfff';
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI*2);
+  ctx.fill();
+}
 
 // optional: resize canvas on window resize
 window.addEventListener('resize', () => {
