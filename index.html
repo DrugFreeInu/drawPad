@@ -21,35 +21,47 @@
 
 <style>
   html, body {
+    margin: 0;
     height: 100%;
     width: 100%;
-    margin: 0;
-    background: #000;
     overflow: hidden;
+    background: #000;
+    font-family: system-ui;
+    color: #8fbfff;
   }
 
-  iframe.layer {
+  iframe { 
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
-    pointer-events: auto;
-    opacity: 1;
-    transition: opacity .45s ease, z-index .2s;
   }
 
-  /* hide code layer initially */
-  iframe#layer-code { display: none; }
+  #copyBtn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 14px;
+    background: rgba(18,30,60,0.36);
+    color: #8fbfff;
+    font-weight: 700;
+    border-radius: 20px;
+    cursor: pointer;
+    z-index: 9999;
+  }
 </style>
 </head>
 <body>
 
-<!-- DrawPad layer -->
-<iframe id="layer-drawpad" class="layer" data-src="drawpad.html" title="Drawpad"></iframe>
+<!-- Drawpad iframe -->
+<iframe id="drawpadFrame" src="drawpad.html"></iframe>
 
-<!-- Code export layer (hidden) -->
-<iframe id="layer-code" class="layer" data-src="code.html" title="Code Export"></iframe>
+<!-- Optional code iframe (hidden, not required for copy) -->
+<iframe id="codeFrame" src="code.html" style="display:none;"></iframe>
+
+<!-- Copy code button -->
+<div id="copyBtn">Copy Code</div>
 
 <script>
   // Anti-cookie enforcement
@@ -58,20 +70,36 @@
     set: () => { console.warn("Cookies blocked"); }
   });
 
-  // Auto-cache both layers
-  (function(){
-    const timestamp = Date.now();
-    document.querySelectorAll('iframe.layer').forEach(f => {
-      const src = f.dataset.src || '';
-      if(!src.includes('://')) f.src = src + '?v=' + timestamp;
+  // Auto-cache the drawpad iframe
+  const drawpad = document.getElementById('drawpadFrame');
+  const timestamp = Date.now();
+  drawpad.src = 'drawpad.html?v=' + timestamp;
+
+  // Copy minimal JS code of points from drawpad.html
+  const copyBtn = document.getElementById('copyBtn');
+  copyBtn.addEventListener('click', async () => {
+    // Ask the drawpad iframe for its points
+    const points = await new Promise(resolve => {
+      const handler = e => {
+        if(e.data?.type === 'sendPoints') {
+          resolve(e.data.points);
+          window.removeEventListener('message', handler);
+        }
+      };
+      window.addEventListener('message', handler);
+      drawpad.contentWindow.postMessage({ type: 'getPoints' }, '*');
     });
 
-    // Auto-cache self
-    if(location.search.indexOf('v=') === -1){
-      history.replaceState(null, '', location.pathname + '?v=' + timestamp);
-    }
-  })();
-</script>
+    if(!points) return;
+    const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
+    const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
 
+    // Copy to clipboard
+    navigator.clipboard.writeText(fullCode).then(() => {
+      copyBtn.textContent = "Copied!";
+      setTimeout(()=>copyBtn.textContent="Copy Code", 1000);
+    });
+  });
+</script>
 </body>
 </html>
