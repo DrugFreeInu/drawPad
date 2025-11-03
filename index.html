@@ -54,15 +54,10 @@
 </head>
 <body>
 
-<!-- Drawpad iframe -->
-<iframe id="drawpadFrame" src="drawpad.html"></iframe>
-
-<!-- Optional code iframe (hidden, not required for copy) -->
-<iframe id="codeFrame" src="code.html" style="display:none;"></iframe>
 <iframe id="gridFrame" src="grid.html" style="position:fixed; inset:0; width:100%; height:100%; border:0; z-index:0;"></iframe>
-
+<iframe id="drawpadFrame" src="drawpad.html" style="position:fixed; inset:0; width:100%; height:100%; border:0; z-index:1;"></iframe>
+<div id="copyBtn" style="z-index:2;">Copy Code</div>
 <!-- Copy code button -->
-<div id="copyBtn">Copy Code</div>
 
 <script>
   // Anti-cookie enforcement
