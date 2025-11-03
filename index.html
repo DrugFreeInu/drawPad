@@ -1,69 +1,59 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Drawpad — Live</title>
-
-<!-- Strict CSP to block cookies, network, and external scripts -->
-<meta http-equiv="Content-Security-Policy"
-      content="
-        default-src 'self';
-        script-src 'self';
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' data:;
-        connect-src 'none';
-        frame-ancestors 'none';
-        object-src 'none';
-        form-action 'none';
-        base-uri 'self';
-      ">
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrawPad</title>
 <style>
-  html, body {
-    height: 100%;
-    width: 100%;
-    margin: 0;
-    background: #000;
-    overflow: hidden;
-  }
-
-  iframe#layer-drawpad {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    z-index: 9999;
-    pointer-events: auto;
-    opacity: 1;
-  }
+  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:#000; }
+  canvas { display:block; width:100%; height:100%; }
 </style>
 </head>
 <body>
-
-<iframe id="layer-drawpad" title="Drawpad"></iframe>
+<canvas id="draw"></canvas>
 
 <script>
-  // Anti-cookie enforcement
-  Object.defineProperty(document, 'cookie', {
-    get: () => "",
-    set: () => { console.warn("Cookies blocked"); }
-  });
+const canvas = document.getElementById('draw');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-  // Auto-cache the drawpad and this index page
-  (function(){
-    const drawpad = document.getElementById('layer-drawpad');
-    const timestamp = Date.now();
-    // Auto-cache drawpad
-    drawpad.src = 'drawPad.html?v=' + timestamp;
+// Draw a subtle grid or faint background so it’s not just black
+const step = 50;
+ctx.strokeStyle = 'rgba(143,191,255,0.08)';
+ctx.lineWidth = 1;
+for(let x=0; x<canvas.width; x+=step){
+  ctx.beginPath();
+  ctx.moveTo(x,0);
+  ctx.lineTo(x,canvas.height);
+  ctx.stroke();
+}
+for(let y=0; y<canvas.height; y+=step){
+  ctx.beginPath();
+  ctx.moveTo(0,y);
+  ctx.lineTo(canvas.width,y);
+  ctx.stroke();
+}
 
-    // Auto-cache self by adding timestamp to URL
-    if (location.search.indexOf('v=') === -1) {
-      history.replaceState(null, '', location.pathname + '?v=' + timestamp);
-    }
-  })();
+// basic free-hand drawing
+let drawing = false;
+canvas.addEventListener('mousedown', e => drawing = true);
+canvas.addEventListener('mouseup', e => drawing = false);
+canvas.addEventListener('mousemove', e => {
+  if(!drawing) return;
+  ctx.fillStyle = '#8fbfff';
+  ctx.beginPath();
+  ctx.arc(e.clientX, e.clientY, 4, 0, Math.PI*2);
+  ctx.fill();
+});
+
+// optional: resize canvas on window resize
+window.addEventListener('resize', () => {
+  const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ctx.putImageData(imgData, 0, 0);
+});
 </script>
-
 </body>
 </html>
