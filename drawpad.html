@@ -3,10 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrawPad</title>
+<title>DrawPad — White Border</title>
 <style>
-  html, body { margin:0; height:100%; width:100%; overflow:hidden; background:transparent; }
-  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  html, body {
+    margin:0;
+    height:100%;
+    width:100%;
+    background:#000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  #draw {
+    touch-action:none;
+    border: 4px solid #fff; /* white border to show drawing area */
+    background: #111;
+    width: 90%;
+    height: 90%;
+    display:block;
+  }
 </style>
 </head>
 <body>
@@ -15,64 +31,51 @@
 <script>
 const canvas = document.getElementById('draw');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 
-// store points for parent code export
+// resize canvas to match CSS size
+function resizeCanvas(){
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// store points
 let points = [];
-
-// drawing state
 let drawing = false;
 
-// mouse events
-canvas.addEventListener('mousedown', e => drawing = true);
-canvas.addEventListener('mouseup', e => drawing = false);
-canvas.addEventListener('mousemove', e => {
-  if(!drawing) return;
-  drawPoint(e.clientX, e.clientY);
-});
+// --- Draw ---
+function drawPoint(x, y){
+  // constrain to canvas bounds
+  if(x < 0 || x > canvas.width || y < 0 || y > canvas.height) return;
 
-// touch events
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  drawing = true;
-  drawTouch(e.touches[0]);
-});
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  drawing = false;
-});
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if(!drawing) return;
-  drawTouch(e.touches[0]);
-});
-
-// draw point helper
-function drawPoint(x, y) {
   points.push({x, y});
   ctx.fillStyle = '#8fbfff';
   ctx.beginPath();
   ctx.arc(x, y, 4, 0, Math.PI*2);
   ctx.fill();
 }
-function drawTouch(touch) {
-  drawPoint(touch.clientX, touch.clientY);
-}
 
-// resize canvas but keep drawn points
-window.addEventListener('resize', () => {
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  ctx.putImageData(imgData, 0, 0);
+// Mouse events
+canvas.addEventListener('mousedown', ()=>drawing=true);
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('mousemove', e => { 
+  if(drawing) drawPoint(e.offsetX, e.offsetY); 
 });
 
-// respond to parent asking for points
-window.addEventListener('message', e => {
-  if(e.data?.type === 'getPoints'){
-    e.source.postMessage({type:'sendPoints', points}, e.origin);
-  }
+// Touch events
+canvas.addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  drawing = true; 
+  const t = e.touches[0];
+  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
+});
+canvas.addEventListener('touchend', e => { drawing=false; });
+canvas.addEventListener('touchmove', e => { 
+  e.preventDefault(); 
+  if(!drawing) return;
+  const t = e.touches[0];
+  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
 });
 </script>
 </body>
