@@ -35,6 +35,7 @@ canvas {
   cursor:pointer;
   z-index:10000;
   user-select:none;
+  pointer-events:auto;
 }
 </style>
 </head>
@@ -63,21 +64,44 @@ function drawPoint(x, y){
   ctx.fill();
 }
 
-// Mouse events
-canvas.addEventListener('mousedown', ()=>drawing=true);
-canvas.addEventListener('mouseup', ()=>drawing=false);
-canvas.addEventListener('mousemove', e=>{ if(drawing) drawPoint(e.clientX, e.clientY); });
+// --- Helper to check button tap ---
+function isOnButton(x, y) {
+  const rect = exportBtn.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
 
-// Touch events
-canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; drawPoint(e.touches[0].clientX, e.touches[0].clientY); });
-canvas.addEventListener('touchend', e=>{ e.preventDefault(); drawing=false; });
-canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(drawing) drawPoint(e.touches[0].clientX, e.touches[0].clientY); });
+// --- Mouse events ---
+canvas.addEventListener('mousedown', e => {
+  if (!isOnButton(e.clientX, e.clientY)) drawing = true;
+});
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mousemove', e => {
+  if(drawing && !isOnButton(e.clientX, e.clientY)) drawPoint(e.clientX, e.clientY);
+});
+
+// --- Touch events ---
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  if (!isOnButton(t.clientX, t.clientY)) {
+    e.preventDefault();
+    drawing = true;
+    drawPoint(t.clientX, t.clientY);
+  }
+});
+canvas.addEventListener('touchend', e => { drawing=false; });
+canvas.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  if(drawing && !isOnButton(t.clientX, t.clientY)) {
+    e.preventDefault();
+    drawPoint(t.clientX, t.clientY);
+  }
+});
 
 // --- Copy Code ---
 function copyCode(){
   const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
   const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
-
+  
   navigator.clipboard.writeText(fullCode).then(()=>{
     exportBtn.textContent = "Copied!";
     setTimeout(()=>exportBtn.textContent="Copy Code",1000);
@@ -88,7 +112,11 @@ function copyCode(){
 }
 
 exportBtn.addEventListener('click', copyCode);
-exportBtn.addEventListener('touchstart', e=>{ e.preventDefault(); copyCode(); });
+exportBtn.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  copyCode();
+});
 
 // --- Resize ---
 window.addEventListener('resize', ()=>{
