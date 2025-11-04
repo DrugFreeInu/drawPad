@@ -22,7 +22,7 @@
     width: 100%;
     height: 100%;
     border: 0;
-    pointer-events: none; /* let the button on top receive clicks */
+    /* interactive, remove pointer-events:none */
   }
 
   #copyBtn {
@@ -38,6 +38,7 @@
     z-index: 9999;
     user-select: none;
     transition: background 0.1s, color 0.1s;
+    pointer-events: auto; /* make button clickable */
   }
 
   #copyBtn:active {
@@ -48,16 +49,20 @@
 </head>
 <body>
 
+<!-- DrawPad iframe -->
 <iframe id="drawpadFrame" src="drawpad.html" style="z-index:1;"></iframe>
+
+<!-- Copy button -->
 <div id="copyBtn">Copy Code</div>
 
 <script>
   const drawpad = document.getElementById('drawpadFrame');
   const copyBtn = document.getElementById('copyBtn');
 
-  // Auto-cache to prevent stale content
+  // Auto-cache to prevent stale iframe content
   drawpad.src = 'drawpad.html?v=' + Date.now();
 
+  // Copy code from drawpad
   copyBtn.addEventListener('click', async () => {
     // Ask drawpad for points
     const points = await new Promise(resolve => {
@@ -71,7 +76,7 @@
       drawpad.contentWindow.postMessage({ type: 'getPoints' }, '*');
     });
 
-    if(!points) return;
+    if (!points) return;
 
     const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
     const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
@@ -97,5 +102,6 @@
     copyBtn.click();
   });
 </script>
+
 </body>
 </html>
