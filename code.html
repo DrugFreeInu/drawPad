@@ -33,7 +33,7 @@ canvas {
   font-weight:700;
   border-radius:20px;
   cursor:pointer;
-  z-index:10000; /* super on top */
+  z-index:10000;
   user-select:none;
   pointer-events:auto;
 }
@@ -47,6 +47,8 @@ canvas {
 <script>
 const canvas = document.getElementById('draw');
 const ctx = canvas.getContext('2d');
+const exportBtn = document.getElementById('export');
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -62,25 +64,55 @@ function drawPoint(x, y){
   ctx.fill();
 }
 
+// Check if touch/click is on the button
+function isOnButton(x, y) {
+  const rect = exportBtn.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 // Mouse events
-canvas.addEventListener('mousedown', ()=>drawing=true);
-canvas.addEventListener('mouseup', ()=>drawing=false);
-canvas.addEventListener('mousemove', e=>{ if(drawing) drawPoint(e.clientX, e.clientY); });
+canvas.addEventListener('mousedown', (e) => {
+  if (!isOnButton(e.clientX, e.clientY)) {
+    drawing = true;
+  }
+});
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mousemove', e => { 
+  if (drawing && !isOnButton(e.clientX, e.clientY)) {
+    drawPoint(e.clientX, e.clientY);
+  }
+});
 
 // Touch events
-canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; drawTouch(e.touches[0]); });
-canvas.addEventListener('touchend', e=>{ e.preventDefault(); drawing=false; });
-canvas.addEventListener('touchmove', e=>{ e.preventDefault(); if(drawing) drawTouch(e.touches[0]); });
-function drawTouch(touch){ drawPoint(touch.clientX, touch.clientY); }
+canvas.addEventListener('touchstart', e => { 
+  const touch = e.touches[0];
+  if (!isOnButton(touch.clientX, touch.clientY)) {
+    e.preventDefault();
+    drawing = true;
+    drawTouch(touch);
+  }
+});
+canvas.addEventListener('touchend', e => { 
+  e.preventDefault();
+  drawing = false;
+});
+canvas.addEventListener('touchmove', e => { 
+  const touch = e.touches[0];
+  if (drawing && !isOnButton(touch.clientX, touch.clientY)) {
+    e.preventDefault();
+    drawTouch(touch);
+  }
+});
+
+function drawTouch(touch){ 
+  drawPoint(touch.clientX, touch.clientY);
+}
 
 // --- Copy Code ---
-const exportBtn = document.getElementById('export');
-
 function copyCode(){
-  const codeLines = points.map(p=>`ctx.fillRect(${p.x},${p.y},4,4);`);
+  const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
   const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
 
-  // fallback method for older browsers
   const textarea = document.createElement('textarea');
   textarea.value = fullCode;
   document.body.appendChild(textarea);
@@ -93,19 +125,22 @@ function copyCode(){
   }
   document.body.removeChild(textarea);
 
-  setTimeout(()=>exportBtn.textContent="Copy Code", 1000);
+  setTimeout(() => exportBtn.textContent = "Copy Code", 1000);
 }
 
-// Click/tap
 exportBtn.addEventListener('click', copyCode);
-exportBtn.addEventListener('touchstart', e=>{ e.preventDefault(); copyCode(); });
+exportBtn.addEventListener('touchstart', e => { 
+  e.preventDefault();
+  e.stopPropagation();
+  copyCode();
+});
 
 // --- Resize ---
-window.addEventListener('resize', ()=>{
-  const data = ctx.getImageData(0,0,canvas.width,canvas.height);
+window.addEventListener('resize', () => {
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  ctx.putImageData(data,0,0);
+  ctx.putImageData(data, 0, 0);
 });
 </script>
 </body>
