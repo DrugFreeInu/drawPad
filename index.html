@@ -36,6 +36,7 @@
     width: 100%;
     height: 100%;
     border: 0;
+    pointer-events: none; /* allow button clicks through */
   }
 
   #copyBtn {
@@ -49,15 +50,21 @@
     border-radius: 20px;
     cursor: pointer;
     z-index: 9999;
+    user-select: none;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  #copyBtn:active {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
   }
 </style>
 </head>
 <body>
 
-<iframe id="gridFrame" src="grid.html" style="position:fixed; inset:0; width:100%; height:100%; border:0; z-index:0;"></iframe>
-<iframe id="drawpadFrame" src="drawpad.html" style="position:fixed; inset:0; width:100%; height:100%; border:0; z-index:1;"></iframe>
-<div id="copyBtn" style="z-index:2;">Copy Code</div>
-<!-- Copy code button -->
+<iframe id="gridFrame" src="grid.html" style="z-index:0;"></iframe>
+<iframe id="drawpadFrame" src="drawpad.html" style="z-index:1;"></iframe>
+<div id="copyBtn">Copy Code</div>
 
 <script>
   // Anti-cookie enforcement
@@ -66,18 +73,17 @@
     set: () => { console.warn("Cookies blocked"); }
   });
 
-  // Auto-cache the drawpad iframe
   const drawpad = document.getElementById('drawpadFrame');
-  const timestamp = Date.now();
-  drawpad.src = 'drawpad.html?v=' + timestamp;
-
-  // Copy minimal JS code of points from drawpad.html
   const copyBtn = document.getElementById('copyBtn');
+
+  // Auto-cache drawpad to prevent stale content
+  drawpad.src = 'drawpad.html?v=' + Date.now();
+
   copyBtn.addEventListener('click', async () => {
-    // Ask the drawpad iframe for its points
+    // Ask drawpad iframe for points
     const points = await new Promise(resolve => {
       const handler = e => {
-        if(e.data?.type === 'sendPoints') {
+        if(e.data?.type === 'sendPoints'){
           resolve(e.data.points);
           window.removeEventListener('message', handler);
         }
@@ -87,14 +93,31 @@
     });
 
     if(!points) return;
+
     const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
     const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(fullCode).then(() => {
+    try {
+      await navigator.clipboard.writeText(fullCode);
       copyBtn.textContent = "Copied!";
-      setTimeout(()=>copyBtn.textContent="Copy Code", 1000);
-    });
+    } catch {
+      copyBtn.textContent = "Failed!";
+    }
+
+    setTimeout(() => copyBtn.textContent = "Copy Code", 1000);
+  });
+
+  // Also respond visually on touch
+  copyBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    copyBtn.style.background = 'rgba(255,255,255,0.2)';
+  });
+  copyBtn.addEventListener('touchend', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    copyBtn.style.background = 'rgba(18,30,60,0.36)';
+    copyBtn.click();
   });
 </script>
 </body>
