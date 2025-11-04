@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DrawPad — White Border</title>
+<style>
+  html, body {
+    margin:0;
+    height:100%;
+    width:100%;
+    background:#000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  canvas {
+    touch-action:none;
+    background: #111;
+    display:block;
+  }
+</style>
+</head>
+<body>
+<canvas id="draw"></canvas>
+
+<script>
+const canvas = document.getElementById('draw');
+const ctx = canvas.getContext('2d');
+
+// Change this to control canvas size as % of viewport
+const canvasPercent = 0.7; // 70%
+
+// resize canvas based on viewport
+function resizeCanvas(){
+  canvas.width = window.innerWidth * canvasPercent;
+  canvas.height = window.innerHeight * canvasPercent;
+  drawBorder();
+}
+
+// draw white border around canvas
+function drawBorder(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// store points
+let points = [];
+let drawing = false;
+
+// --- Draw ---
+function drawPoint(x, y){
+  if(x < 0 || x > canvas.width || y < 0 || y > canvas.height) return;
+
+  points.push({x, y});
+  ctx.fillStyle = '#8fbfff';
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', ()=>drawing=true);
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('mousemove', e => { 
+  if(drawing) drawPoint(e.offsetX, e.offsetY); 
+});
+
+// Touch events
+canvas.addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  drawing = true; 
+  const t = e.touches[0];
+  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
+});
+canvas.addEventListener('touchend', e => { drawing=false; });
+canvas.addEventListener('touchmove', e => { 
+  e.preventDefault(); 
+  if(!drawing) return;
+  const t = e.touches[0];
+  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
+});
+</script>
+</body>
+</html>
