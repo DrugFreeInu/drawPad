@@ -15,11 +15,9 @@
     align-items:center;
   }
 
-  #draw {
+  canvas {
     touch-action:none;
     background: #111;
-    width: 70%;
-    height: 70%;
     display:block;
   }
 </style>
@@ -31,20 +29,24 @@
 const canvas = document.getElementById('draw');
 const ctx = canvas.getContext('2d');
 
-// resize canvas to match CSS size
+// Change this to control canvas size as % of viewport
+const canvasPercent = 0.7; // 70%
+
+// resize canvas based on viewport
 function resizeCanvas(){
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+  canvas.width = window.innerWidth * canvasPercent;
+  canvas.height = window.innerHeight * canvasPercent;
   drawBorder();
 }
 
-// draw white border inside canvas
+// draw white border around canvas
 function drawBorder(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 4;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
 }
+
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
@@ -54,7 +56,6 @@ let drawing = false;
 
 // --- Draw ---
 function drawPoint(x, y){
-  // constrain to canvas bounds
   if(x < 0 || x > canvas.width || y < 0 || y > canvas.height) return;
 
   points.push({x, y});
