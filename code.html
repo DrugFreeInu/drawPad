@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrawPad — Code Export</title>
+<title>DrawPad — Copy Button Fixed</title>
 <style>
 html, body {
   margin:0;
@@ -35,7 +35,6 @@ canvas {
   cursor:pointer;
   z-index:10000;
   user-select:none;
-  pointer-events:auto;
 }
 </style>
 </head>
@@ -101,14 +100,23 @@ canvas.addEventListener('touchmove', e => {
 function copyCode(){
   const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
   const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
-  
-  navigator.clipboard.writeText(fullCode).then(()=>{
+
+  // create a temporary textarea for guaranteed copy
+  const textarea = document.createElement('textarea');
+  textarea.value = fullCode;
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    document.execCommand('copy');
     exportBtn.textContent = "Copied!";
-    setTimeout(()=>exportBtn.textContent="Copy Code",1000);
-  }).catch(()=>{
+  } catch {
     exportBtn.textContent = "Failed!";
-    setTimeout(()=>exportBtn.textContent="Copy Code",1000);
-  });
+  }
+
+  document.body.removeChild(textarea);
+  setTimeout(()=>exportBtn.textContent="Copy Code",1000);
 }
 
 exportBtn.addEventListener('click', copyCode);
