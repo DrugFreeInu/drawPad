@@ -28,45 +28,39 @@ const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Draw grid
+// Draw grid without outer border
 const step = 50; // grid spacing in pixels
 ctx.strokeStyle = 'rgba(143,191,255,0.08)';
 ctx.lineWidth = 1;
 
-// vertical lines
-for(let x = 0; x < canvas.width; x += step) {
-  ctx.beginPath();
-  ctx.moveTo(x, 0);
-  ctx.lineTo(x, canvas.height);
-  ctx.stroke();
-}
+function drawGrid() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-// horizontal lines
-for(let y = 0; y < canvas.height; y += step) {
-  ctx.beginPath();
-  ctx.moveTo(0, y);
-  ctx.lineTo(canvas.width, y);
-  ctx.stroke();
-}
-
-// resize handler to redraw grid
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  for(let x = 0; x < canvas.width; x += step) {
+  // vertical lines (skip first and last)
+  for(let x = step; x < canvas.width - step; x += step) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvas.height);
     ctx.stroke();
   }
 
-  for(let y = 0; y < canvas.height; y += step) {
+  // horizontal lines (skip first and last)
+  for(let y = step; y < canvas.height - step; y += step) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(canvas.width, y);
     ctx.stroke();
   }
+}
+
+// initial draw
+drawGrid();
+
+// resize handler to redraw grid
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  drawGrid();
 });
 </script>
 </body>
