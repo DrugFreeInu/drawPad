@@ -5,20 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DrawPad — Live</title>
 
-<!-- Strict CSP to block cookies, network, and external scripts -->
-<meta http-equiv="Content-Security-Policy"
-      content="
-        default-src 'self';
-        script-src 'self';
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' data:;
-        connect-src 'none';
-        frame-ancestors 'none';
-        object-src 'none';
-        form-action 'none';
-        base-uri 'self';
-      ">
-
 <style>
   html, body {
     margin: 0;
@@ -30,17 +16,26 @@
     color: #8fbfff;
   }
 
+  /* Iframes cover screen but don't block clicks */
   iframe { 
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
-    pointer-events: none; /* Let clicks pass through so button works */
+    pointer-events: none; /* MUST be none so button can be tapped */
+  }
+
+  /* Button container on top */
+  #buttonContainer {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none; /* allow iframes to ignore clicks except button */
   }
 
   #copyBtn {
-    position: fixed;
+    position: absolute;
     top: 20px;
     right: 20px;
     padding: 10px 14px;
@@ -49,14 +44,13 @@
     font-weight: 700;
     border-radius: 20px;
     cursor: pointer;
-    z-index: 9999;
-    pointer-events: auto; /* Make button clickable */
+    pointer-events: auto; /* MUST be auto so button itself is clickable */
     user-select: none;
     transition: background 0.15s ease;
   }
 
   #copyBtn:active {
-    background: rgba(143,191,255,0.36); /* quick tap feedback */
+    background: rgba(143,191,255,0.36); /* tap feedback */
   }
 </style>
 </head>
@@ -64,55 +58,46 @@
 
 <iframe id="gridFrame" src="grid.html" style="z-index:0;"></iframe>
 <iframe id="drawpadFrame" src="drawpad.html" style="z-index:1;"></iframe>
-<div id="copyBtn" style="z-index:2;">Copy Code</div>
+
+<div id="buttonContainer">
+  <div id="copyBtn">Copy Code</div>
+</div>
 
 <script>
-  // Anti-cookie enforcement
-  Object.defineProperty(document, 'cookie', {
-    get: () => "",
-    set: () => { console.warn("Cookies blocked"); }
+const drawpad = document.getElementById('drawpadFrame');
+drawpad.src = 'drawpad.html?v=' + Date.now();
+
+const copyBtn = document.getElementById('copyBtn');
+copyBtn.addEventListener('click', async () => {
+  const points = await new Promise(resolve => {
+    const handler = e => {
+      if (e.data?.type === 'sendPoints') {
+        resolve(e.data.points);
+        window.removeEventListener('message', handler);
+      }
+    };
+    window.addEventListener('message', handler);
+    drawpad.contentWindow.postMessage({ type: 'getPoints' }, '*');
   });
 
-  // Auto-cache the drawpad iframe
-  const drawpad = document.getElementById('drawpadFrame');
-  const timestamp = Date.now();
-  drawpad.src = 'drawpad.html?v=' + timestamp;
+  if (!points) return;
+  const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
+  const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
 
-  // Copy minimal JS code of points from drawpad.html
-  const copyBtn = document.getElementById('copyBtn');
-  copyBtn.addEventListener('click', async () => {
-    // Ask the drawpad iframe for its points
-    const points = await new Promise(resolve => {
-      const handler = e => {
-        if(e.data?.type === 'sendPoints') {
-          resolve(e.data.points);
-          window.removeEventListener('message', handler);
-        }
-      };
-      window.addEventListener('message', handler);
-      drawpad.contentWindow.postMessage({ type: 'getPoints' }, '*');
-    });
+  try {
+    await navigator.clipboard.writeText(fullCode);
+    copyBtn.textContent = "Copied!";
+  } catch {
+    copyBtn.textContent = "Failed!";
+  }
+  setTimeout(() => copyBtn.textContent = "Copy Code", 1000);
+});
 
-    if(!points) return;
-    const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
-    const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
-
-    // Copy to clipboard
-    try {
-      await navigator.clipboard.writeText(fullCode);
-      copyBtn.textContent = "Copied!";
-    } catch {
-      copyBtn.textContent = "Failed!";
-    }
-
-    setTimeout(() => copyBtn.textContent="Copy Code", 1000);
-  });
-
-  // Optional: tap feedback for touch devices
-  copyBtn.addEventListener('touchstart', e => {
-    e.preventDefault();
-    copyBtn.click();
-  });
+// Touch feedback
+copyBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  copyBtn.click();
+});
 </script>
 </body>
 </html>
