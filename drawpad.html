@@ -18,11 +18,46 @@
     touch-action: none;
     cursor: crosshair;
   }
+
+  /* Controls */
+  #controls {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+
+  .btn {
+    padding: 12px 16px;
+    border-radius: 22px;
+    background: rgba(18,30,60,0.4);
+    color: #8fbfff;
+    font-weight: 600;
+    user-select: none;
+    backdrop-filter: blur(6px);
+  }
+
+  .btn.hold {
+    opacity: 0.7;
+  }
+
+  .btn.hold.active {
+    background: rgba(120,170,255,0.35);
+    color: #fff;
+    opacity: 1;
+  }
 </style>
 </head>
 <body>
 
 <canvas id="draw"></canvas>
+
+<div id="controls">
+  <div class="btn hold" id="boldHold">Hold</div>
+  <div class="btn" id="clearBtn">Clear</div>
+</div>
 
 <script>
 const canvas = document.getElementById('draw');
@@ -32,8 +67,9 @@ let drawing = false;
 let path = [];
 let points = [];
 
-let startTime = 0;
-const MAX_HOLD = 3000; // 3 seconds
+let boldActive = false;
+let boldStart = 0;
+const MAX_BOLD_TIME = 3000;
 
 /* Resize */
 function resize() {
@@ -43,13 +79,13 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* Pastel base */
+/* Base pastel setup */
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
+/* Input */
 function start(x, y) {
   drawing = true;
-  startTime = performance.now();
   path = [{ x, y }];
   points.push({ x, y });
 }
@@ -66,18 +102,21 @@ function end() {
   path = [];
 }
 
+/* Core draw */
 function redraw() {
-  const len = path.length;
-  if (len < 2) return;
+  if (path.length < 2) return;
 
-  const now = performance.now();
-  const held = Math.min(now - startTime, MAX_HOLD);
-  const t = held / MAX_HOLD; // 0 → 1
+  let t = 0;
 
-  /* Density curve (ease-in) */
-  const alpha = 0.08 + t * 0.35;
-  const width = 18 + t * 18;
-  const blur = 6 + t * 10;
+  if (boldActive) {
+    const held = Math.min(performance.now() - boldStart, MAX_BOLD_TIME);
+    t = held / MAX_BOLD_TIME; // ramp 0 → 1
+  }
+
+  // Soft default → bold ramp
+  const alpha = 0.06 + t * 0.38;
+  const width = 18 + t * 20;
+  const blur  = 6  + t * 14;
 
   ctx.strokeStyle = `rgba(210,225,255,${alpha})`;
   ctx.lineWidth = width;
@@ -87,7 +126,7 @@ function redraw() {
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
 
-  for (let i = 1; i < len - 1; i++) {
+  for (let i = 1; i < path.length - 1; i++) {
     const xc = (path[i].x + path[i + 1].x) / 2;
     const yc = (path[i].y + path[i + 1].y) / 2;
     ctx.quadraticCurveTo(path[i].x, path[i].y, xc, yc);
@@ -103,7 +142,7 @@ canvas.addEventListener('mousemove', e => move(e.clientX, e.clientY));
 canvas.addEventListener('mouseup', end);
 canvas.addEventListener('mouseleave', end);
 
-/* Touch */
+/* Touch draw */
 canvas.addEventListener('touchstart', e => {
   const t = e.touches[0];
   start(t.clientX, t.clientY);
@@ -114,13 +153,46 @@ canvas.addEventListener('touchmove', e => {
 });
 canvas.addEventListener('touchend', end);
 
+/* Bold hold button */
+const holdBtn = document.getElementById('boldHold');
+
+function activateBold() {
+  if (!boldActive) {
+    boldActive = true;
+    boldStart = performance.now();
+    holdBtn.classList.add('active');
+  }
+}
+
+function deactivateBold() {
+  boldActive = false;
+  holdBtn.classList.remove('active');
+}
+
+/* Touch + mouse support */
+holdBtn.addEventListener('mousedown', activateBold);
+holdBtn.addEventListener('mouseup', deactivateBold);
+holdBtn.addEventListener('mouseleave', deactivateBold);
+
+holdBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  activateBold();
+});
+holdBtn.addEventListener('touchend', e => {
+  e.preventDefault();
+  deactivateBold();
+});
+
+/* Clear */
+document.getElementById('clearBtn').onclick = () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  points = [];
+};
+
 /* Export */
 window.addEventListener('message', e => {
   if (e.data?.type === 'getPoints') {
-    parent.postMessage({
-      type: 'sendPoints',
-      points
-    }, '*');
+    parent.postMessage({ type: 'sendPoints', points }, '*');
   }
 });
 </script>
