@@ -3,89 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrawPad — White Border</title>
+
+<title>DrawPad</title>
+
 <style>
   html, body {
-    margin:0;
-    height:100%;
-    width:100%;
-    background:#000;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #0b0b0b;
   }
 
   canvas {
-    touch-action:none;
-    background: #111;
-    display:block;
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
   }
 </style>
 </head>
 <body>
+
 <canvas id="draw"></canvas>
 
 <script>
 const canvas = document.getElementById('draw');
 const ctx = canvas.getContext('2d');
 
-// Change this to control canvas size as % of viewport
-const canvasPercent = 0.7; // 70%
-
-// resize canvas based on viewport
-function resizeCanvas(){
-  canvas.width = window.innerWidth * canvasPercent;
-  canvas.height = window.innerHeight * canvasPercent;
-  drawBorder();
-}
-
-// draw white border around canvas
-function drawBorder(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
-}
-
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-// store points
 let points = [];
 let drawing = false;
 
-// --- Draw ---
-function drawPoint(x, y){
-  if(x < 0 || x > canvas.width || y < 0 || y > canvas.height) return;
+// Resize
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+addEventListener('resize', resize);
+resize();
 
-  points.push({x, y});
-  ctx.fillStyle = '#8fbfff';
+/* --------- PASTEL SETTINGS --------- */
+ctx.globalCompositeOperation = 'multiply';
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+function drawPastel(x, y, last) {
+  ctx.strokeStyle = 'rgba(200,220,255,0.08)';
+  ctx.lineWidth = 18;
+
   ctx.beginPath();
-  ctx.arc(x, y, 4, 0, Math.PI*2);
-  ctx.fill();
+  if (last) ctx.moveTo(last.x, last.y);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // Chalk grain
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath();
+    ctx.arc(
+      x + (Math.random() - 0.5) * 8,
+      y + (Math.random() - 0.5) * 8,
+      Math.random() * 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
 }
 
-// Mouse events
-canvas.addEventListener('mousedown', ()=>drawing=true);
-canvas.addEventListener('mouseup', ()=>drawing=false);
-canvas.addEventListener('mousemove', e => { 
-  if(drawing) drawPoint(e.offsetX, e.offsetY); 
-});
+/* --------- INPUT --------- */
+function start(x, y) {
+  drawing = true;
+  points.push({ x, y });
+}
 
-// Touch events
-canvas.addEventListener('touchstart', e => { 
-  e.preventDefault(); 
-  drawing = true; 
+function move(x, y) {
+  if (!drawing) return;
+  const last = points[points.length - 1];
+  drawPastel(x, y, last);
+  points.push({ x, y });
+}
+
+function end() {
+  drawing = false;
+}
+
+/* Mouse */
+canvas.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+canvas.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+canvas.addEventListener('mouseup', end);
+canvas.addEventListener('mouseleave', end);
+
+/* Touch */
+canvas.addEventListener('touchstart', e => {
   const t = e.touches[0];
-  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
+  start(t.clientX, t.clientY);
 });
-canvas.addEventListener('touchend', e => { drawing=false; });
-canvas.addEventListener('touchmove', e => { 
-  e.preventDefault(); 
-  if(!drawing) return;
+canvas.addEventListener('touchmove', e => {
   const t = e.touches[0];
-  drawPoint(t.clientX - canvas.offsetLeft, t.clientY - canvas.offsetTop);
+  move(t.clientX, t.clientY);
+});
+canvas.addEventListener('touchend', end);
+
+/* --------- EXPORT --------- */
+window.addEventListener('message', e => {
+  if (e.data?.type === 'getPoints') {
+    parent.postMessage({
+      type: 'sendPoints',
+      points
+    }, '*');
+  }
 });
 </script>
+
 </body>
 </html>
