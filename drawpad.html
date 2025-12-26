@@ -19,7 +19,6 @@
     cursor: crosshair;
   }
 
-  /* Controls */
   #controls {
     position: fixed;
     bottom: 18px;
@@ -74,7 +73,7 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* Chalk pastel base */
+/* Chalk base */
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
@@ -95,9 +94,10 @@ function move(x, y) {
 function end() {
   drawing = false;
   path = [];
+  ctx.setLineDash([]); // reset
 }
 
-/* Draw */
+/* Draw with chalk tooth */
 function redraw() {
   if (path.length < 2) return;
 
@@ -107,12 +107,16 @@ function redraw() {
     t = held / MAX_BOLD_TIME;
   }
 
-  /* MATTE pastel values */
-  const alpha = 0.05 + t * 0.30;   // pigment density
-  const width = 20 + t * 22;      // chalk side pressure
+  const alpha = 0.05 + t * 0.30;
+  const width = 20 + t * 22;
 
   ctx.strokeStyle = `rgba(210,225,255,${alpha})`;
   ctx.lineWidth = width;
+
+  // ---- CHALK TOOTH (98% coverage) ----
+  const dash = 0.8 + Math.random() * 0.6; // tiny chalk skips
+  const gap  = 0.3 + Math.random() * 0.4;
+  ctx.setLineDash([dash, gap]);
 
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
@@ -162,7 +166,6 @@ function deactivateBold() {
 holdBtn.addEventListener('mousedown', activateBold);
 holdBtn.addEventListener('mouseup', deactivateBold);
 holdBtn.addEventListener('mouseleave', deactivateBold);
-
 holdBtn.addEventListener('touchstart', e => {
   e.preventDefault();
   activateBold();
