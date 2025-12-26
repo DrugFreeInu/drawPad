@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>DrawPad</title>
 
 <style>
@@ -29,10 +28,11 @@
 const canvas = document.getElementById('draw');
 const ctx = canvas.getContext('2d');
 
-let points = [];
 let drawing = false;
+let path = [];
+let points = [];
 
-// Resize
+/* Resize */
 function resize() {
   canvas.width = innerWidth;
   canvas.height = innerHeight;
@@ -40,36 +40,49 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* --------- SMOOTH PASTEL SETTINGS --------- */
-ctx.globalCompositeOperation = 'multiply';
+/* Pastel look */
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
-function drawPastel(x, y, last) {
-  ctx.strokeStyle = 'rgba(200,220,255,0.07)';
-  ctx.lineWidth = 22;
-
-  ctx.beginPath();
-  if (last) ctx.moveTo(last.x, last.y);
-  ctx.lineTo(x, y);
-  ctx.stroke();
-}
-
-/* --------- INPUT --------- */
 function start(x, y) {
   drawing = true;
+  path = [{ x, y }];
   points.push({ x, y });
 }
 
 function move(x, y) {
   if (!drawing) return;
-  const last = points[points.length - 1];
-  drawPastel(x, y, last);
+  path.push({ x, y });
   points.push({ x, y });
+  redraw();
 }
 
 function end() {
   drawing = false;
+  path = [];
+}
+
+/* Core draw: single continuous path */
+function redraw() {
+  const len = path.length;
+  if (len < 2) return;
+
+  ctx.strokeStyle = 'rgba(210,225,255,0.22)';
+  ctx.lineWidth = 26;
+  ctx.shadowColor = 'rgba(210,225,255,0.35)';
+  ctx.shadowBlur = 12;
+
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+
+  for (let i = 1; i < len - 1; i++) {
+    const xc = (path[i].x + path[i + 1].x) / 2;
+    const yc = (path[i].y + path[i + 1].y) / 2;
+    ctx.quadraticCurveTo(path[i].x, path[i].y, xc, yc);
+  }
+
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 }
 
 /* Mouse */
@@ -89,7 +102,7 @@ canvas.addEventListener('touchmove', e => {
 });
 canvas.addEventListener('touchend', end);
 
-/* --------- EXPORT --------- */
+/* Export */
 window.addEventListener('message', e => {
   if (e.data?.type === 'getPoints') {
     parent.postMessage({
