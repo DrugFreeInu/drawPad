@@ -73,7 +73,6 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* Chalk base */
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
@@ -94,35 +93,26 @@ function move(x, y) {
 function end() {
   drawing = false;
   path = [];
-  ctx.setLineDash([]);
 }
 
-/* Draw with chalk + dust */
+/* Chalk with edge dust */
 function redraw() {
   if (path.length < 2) return;
 
   let t = 0;
   if (boldActive) {
-    const held = Math.min(performance.now() - boldStart, MAX_BOLD_TIME);
-    t = held / MAX_BOLD_TIME;
+    t = Math.min((performance.now() - boldStart) / MAX_BOLD_TIME, 1);
   }
 
-  const baseAlpha = 0.05 + t * 0.28;
-  const width = 20 + t * 22;
+  const baseAlpha = 0.06 + t * 0.26;
+  const width = 22 + t * 26;
 
-  // -------- MAIN CHALK PASS --------
+  /* ---- CORE STROKE (center mass) ---- */
   ctx.strokeStyle = `rgba(210,225,255,${baseAlpha})`;
   ctx.lineWidth = width;
 
-  // tiny tooth gaps
-  ctx.setLineDash([
-    0.9 + Math.random() * 0.6,
-    0.4 + Math.random() * 0.5
-  ]);
-
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
-
   for (let i = 1; i < path.length - 1; i++) {
     const xc = (path[i].x + path[i + 1].x) / 2;
     const yc = (path[i].y + path[i + 1].y) / 2;
@@ -130,26 +120,29 @@ function redraw() {
   }
   ctx.stroke();
 
-  // -------- DUST PASS (powder falloff) --------
-  ctx.setLineDash([]);
+  /* ---- EDGE DUST (broken sides) ---- */
+  const dustPasses = 3;
+  for (let p = 0; p < dustPasses; p++) {
+    ctx.strokeStyle = `rgba(210,225,255,${baseAlpha * (0.25 + Math.random()*0.15)})`;
+    ctx.lineWidth = width * (0.55 + Math.random()*0.25);
 
-  for (let i = 0; i < 2; i++) {
-    ctx.strokeStyle = `rgba(210,225,255,${baseAlpha * 0.35})`;
-    ctx.lineWidth = width * (0.55 + Math.random() * 0.15);
-
-    const ox = (Math.random() - 0.5) * 1.2;
-    const oy = (Math.random() - 0.5) * 1.2;
+    const lateral = (Math.random() - 0.5) * width * 0.35;
+    const jitter = 0.8 + Math.random() * 1.2;
 
     ctx.beginPath();
-    ctx.moveTo(path[0].x + ox, path[0].y + oy);
+    ctx.moveTo(
+      path[0].x + lateral + (Math.random()-0.5)*jitter,
+      path[0].y + (Math.random()-0.5)*jitter
+    );
 
-    for (let j = 1; j < path.length - 1; j++) {
-      const xc = (path[j].x + path[j + 1].x) / 2 + ox;
-      const yc = (path[j].y + path[j + 1].y) / 2 + oy;
+    for (let i = 1; i < path.length - 1; i++) {
+      const xc = (path[i].x + path[i + 1].x) / 2;
+      const yc = (path[i].y + path[i + 1].y) / 2;
+
       ctx.quadraticCurveTo(
-        path[j].x + ox,
-        path[j].y + oy,
-        xc,
+        path[i].x + lateral + (Math.random()-0.5)*jitter,
+        path[i].y + (Math.random()-0.5)*jitter,
+        xc + lateral,
         yc
       );
     }
@@ -184,7 +177,6 @@ function activateBold() {
     holdBtn.classList.add('active');
   }
 }
-
 function deactivateBold() {
   boldActive = false;
   holdBtn.classList.remove('active');
@@ -193,14 +185,8 @@ function deactivateBold() {
 holdBtn.addEventListener('mousedown', activateBold);
 holdBtn.addEventListener('mouseup', deactivateBold);
 holdBtn.addEventListener('mouseleave', deactivateBold);
-holdBtn.addEventListener('touchstart', e => {
-  e.preventDefault();
-  activateBold();
-});
-holdBtn.addEventListener('touchend', e => {
-  e.preventDefault();
-  deactivateBold();
-});
+holdBtn.addEventListener('touchstart', e => { e.preventDefault(); activateBold(); });
+holdBtn.addEventListener('touchend', e => { e.preventDefault(); deactivateBold(); });
 
 /* Clear */
 document.getElementById('clearBtn').onclick = () => {
