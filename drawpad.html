@@ -6,42 +6,42 @@
 <title>DrawPad</title>
 
 <style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-    background: #0b0b0b;
-  }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0b0b;
+}
 
-  canvas {
-    display: block;
-    touch-action: none;
-    cursor: crosshair;
-  }
+canvas {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
 
-  #controls {
-    position: fixed;
-    bottom: 18px;
-    left: 18px;
-    display: flex;
-    gap: 10px;
-    z-index: 10;
-  }
+#controls {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
 
-  .btn {
-    padding: 12px 16px;
-    border-radius: 22px;
-    background: rgba(18,30,60,0.4);
-    color: #8fbfff;
-    font-weight: 600;
-    user-select: none;
-    backdrop-filter: blur(6px);
-  }
+.btn {
+  padding: 12px 16px;
+  border-radius: 22px;
+  background: rgba(18,30,60,0.4);
+  color: #8fbfff;
+  font-weight: 600;
+  user-select: none;
+  backdrop-filter: blur(6px);
+}
 
-  .btn.hold.active {
-    background: rgba(120,170,255,0.35);
-    color: #fff;
-  }
+.btn.hold.active {
+  background: rgba(120,170,255,0.35);
+  color: #fff;
+}
 </style>
 </head>
 <body>
@@ -95,7 +95,7 @@ function end() {
   path = [];
 }
 
-/* Chalk with edge dust */
+/* Chalk stroke with micro dust breakup */
 function redraw() {
   if (path.length < 2) return;
 
@@ -104,50 +104,39 @@ function redraw() {
     t = Math.min((performance.now() - boldStart) / MAX_BOLD_TIME, 1);
   }
 
-  const baseAlpha = 0.06 + t * 0.26;
+  const baseAlpha = 0.06 + t * 0.28;
   const width = 22 + t * 26;
 
-  /* ---- CORE STROKE (center mass) ---- */
-  ctx.strokeStyle = `rgba(210,225,255,${baseAlpha})`;
   ctx.lineWidth = width;
 
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length - 1; i++) {
-    const xc = (path[i].x + path[i + 1].x) / 2;
-    const yc = (path[i].y + path[i + 1].y) / 2;
-    ctx.quadraticCurveTo(path[i].x, path[i].y, xc, yc);
-  }
-  ctx.stroke();
 
-  /* ---- EDGE DUST (broken sides) ---- */
-  const dustPasses = 3;
-  for (let p = 0; p < dustPasses; p++) {
-    ctx.strokeStyle = `rgba(210,225,255,${baseAlpha * (0.25 + Math.random()*0.15)})`;
-    ctx.lineWidth = width * (0.55 + Math.random()*0.25);
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i];
+    const prev = path[i - 1];
 
-    const lateral = (Math.random() - 0.5) * width * 0.35;
-    const jitter = 0.8 + Math.random() * 1.2;
-
-    ctx.beginPath();
-    ctx.moveTo(
-      path[0].x + lateral + (Math.random()-0.5)*jitter,
-      path[0].y + (Math.random()-0.5)*jitter
-    );
-
-    for (let i = 1; i < path.length - 1; i++) {
-      const xc = (path[i].x + path[i + 1].x) / 2;
-      const yc = (path[i].y + path[i + 1].y) / 2;
-
-      ctx.quadraticCurveTo(
-        path[i].x + lateral + (Math.random()-0.5)*jitter,
-        path[i].y + (Math.random()-0.5)*jitter,
-        xc + lateral,
-        yc
-      );
+    // ---- MICRO IMPERFECTION ----
+    // tiny dropout chance per segment
+    if (Math.random() < 0.06) {
+      ctx.strokeStyle = `rgba(210,225,255,${baseAlpha * 0.35})`;
+    } else {
+      // subtle alpha fluctuation
+      const jitterAlpha =
+        baseAlpha * (0.85 + Math.random() * 0.3);
+      ctx.strokeStyle = `rgba(210,225,255,${jitterAlpha})`;
     }
-    ctx.stroke();
+
+    // micro position wobble (chalk crumble)
+    const wobble = 0.6 + Math.random() * 0.8;
+
+    ctx.lineTo(
+      p.x + (Math.random() - 0.5) * wobble,
+      p.y + (Math.random() - 0.5) * wobble
+    );
   }
+
+  ctx.stroke();
 }
 
 /* Mouse */
@@ -177,6 +166,7 @@ function activateBold() {
     holdBtn.classList.add('active');
   }
 }
+
 function deactivateBold() {
   boldActive = false;
   holdBtn.classList.remove('active');
