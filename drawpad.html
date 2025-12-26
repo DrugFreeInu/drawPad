@@ -40,33 +40,19 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* --------- PASTEL SETTINGS --------- */
+/* --------- SMOOTH PASTEL SETTINGS --------- */
 ctx.globalCompositeOperation = 'multiply';
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
 function drawPastel(x, y, last) {
-  ctx.strokeStyle = 'rgba(200,220,255,0.08)';
-  ctx.lineWidth = 18;
+  ctx.strokeStyle = 'rgba(200,220,255,0.07)';
+  ctx.lineWidth = 22;
 
   ctx.beginPath();
   if (last) ctx.moveTo(last.x, last.y);
   ctx.lineTo(x, y);
   ctx.stroke();
-
-  // Chalk grain
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    ctx.beginPath();
-    ctx.arc(
-      x + (Math.random() - 0.5) * 8,
-      y + (Math.random() - 0.5) * 8,
-      Math.random() * 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  }
 }
 
 /* --------- INPUT --------- */
