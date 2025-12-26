@@ -94,10 +94,10 @@ function move(x, y) {
 function end() {
   drawing = false;
   path = [];
-  ctx.setLineDash([]); // reset
+  ctx.setLineDash([]);
 }
 
-/* Draw with chalk tooth */
+/* Draw with chalk + dust */
 function redraw() {
   if (path.length < 2) return;
 
@@ -107,16 +107,18 @@ function redraw() {
     t = held / MAX_BOLD_TIME;
   }
 
-  const alpha = 0.05 + t * 0.30;
+  const baseAlpha = 0.05 + t * 0.28;
   const width = 20 + t * 22;
 
-  ctx.strokeStyle = `rgba(210,225,255,${alpha})`;
+  // -------- MAIN CHALK PASS --------
+  ctx.strokeStyle = `rgba(210,225,255,${baseAlpha})`;
   ctx.lineWidth = width;
 
-  // ---- CHALK TOOTH (98% coverage) ----
-  const dash = 0.8 + Math.random() * 0.6; // tiny chalk skips
-  const gap  = 0.3 + Math.random() * 0.4;
-  ctx.setLineDash([dash, gap]);
+  // tiny tooth gaps
+  ctx.setLineDash([
+    0.9 + Math.random() * 0.6,
+    0.4 + Math.random() * 0.5
+  ]);
 
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
@@ -126,8 +128,33 @@ function redraw() {
     const yc = (path[i].y + path[i + 1].y) / 2;
     ctx.quadraticCurveTo(path[i].x, path[i].y, xc, yc);
   }
-
   ctx.stroke();
+
+  // -------- DUST PASS (powder falloff) --------
+  ctx.setLineDash([]);
+
+  for (let i = 0; i < 2; i++) {
+    ctx.strokeStyle = `rgba(210,225,255,${baseAlpha * 0.35})`;
+    ctx.lineWidth = width * (0.55 + Math.random() * 0.15);
+
+    const ox = (Math.random() - 0.5) * 1.2;
+    const oy = (Math.random() - 0.5) * 1.2;
+
+    ctx.beginPath();
+    ctx.moveTo(path[0].x + ox, path[0].y + oy);
+
+    for (let j = 1; j < path.length - 1; j++) {
+      const xc = (path[j].x + path[j + 1].x) / 2 + ox;
+      const yc = (path[j].y + path[j + 1].y) / 2 + oy;
+      ctx.quadraticCurveTo(
+        path[j].x + ox,
+        path[j].y + oy,
+        xc,
+        yc
+      );
+    }
+    ctx.stroke();
+  }
 }
 
 /* Mouse */
