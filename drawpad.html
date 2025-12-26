@@ -32,6 +32,9 @@ let drawing = false;
 let path = [];
 let points = [];
 
+let startTime = 0;
+const MAX_HOLD = 3000; // 3 seconds
+
 /* Resize */
 function resize() {
   canvas.width = innerWidth;
@@ -40,12 +43,13 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-/* Pastel look */
+/* Pastel base */
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
 
 function start(x, y) {
   drawing = true;
+  startTime = performance.now();
   path = [{ x, y }];
   points.push({ x, y });
 }
@@ -62,15 +66,23 @@ function end() {
   path = [];
 }
 
-/* Core draw: single continuous path */
 function redraw() {
   const len = path.length;
   if (len < 2) return;
 
-  ctx.strokeStyle = 'rgba(210,225,255,0.22)';
-  ctx.lineWidth = 26;
-  ctx.shadowColor = 'rgba(210,225,255,0.35)';
-  ctx.shadowBlur = 12;
+  const now = performance.now();
+  const held = Math.min(now - startTime, MAX_HOLD);
+  const t = held / MAX_HOLD; // 0 → 1
+
+  /* Density curve (ease-in) */
+  const alpha = 0.08 + t * 0.35;
+  const width = 18 + t * 18;
+  const blur = 6 + t * 10;
+
+  ctx.strokeStyle = `rgba(210,225,255,${alpha})`;
+  ctx.lineWidth = width;
+  ctx.shadowColor = `rgba(210,225,255,${alpha * 1.2})`;
+  ctx.shadowBlur = blur;
 
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
