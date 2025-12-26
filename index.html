@@ -3,104 +3,115 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DrawPad — Live</title>
+
+<title>DrawPad</title>
 
 <style>
   html, body {
     margin: 0;
     height: 100%;
-    width: 100%;
     overflow: hidden;
-    background: #000;
-    font-family: system-ui;
-    color: #8fbfff;
+    background: #0b0b0b;
   }
 
-  iframe { 
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    /* interactive, remove pointer-events:none */
-  }
-
-  #copyBtn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 10px 14px;
-    background: rgba(18,30,60,0.36);
-    color: #8fbfff;
-    font-weight: 700;
-    border-radius: 20px;
-    cursor: pointer;
-    z-index: 9999;
-    user-select: none;
-    transition: background 0.1s, color 0.1s;
-    pointer-events: auto; /* make button clickable */
-  }
-
-  #copyBtn:active {
-    background: rgba(255,255,255,0.2);
-    color: #fff;
+  canvas {
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
   }
 </style>
 </head>
 <body>
 
-<!-- DrawPad iframe -->
-<iframe id="drawpadFrame" src="drawpad.html" style="z-index:1;"></iframe>
-
-<!-- Copy button -->
-<div id="copyBtn">Copy Code</div>
+<canvas id="draw"></canvas>
 
 <script>
-  const drawpad = document.getElementById('drawpadFrame');
-  const copyBtn = document.getElementById('copyBtn');
+const canvas = document.getElementById('draw');
+const ctx = canvas.getContext('2d');
 
-  // Auto-cache to prevent stale iframe content
-  drawpad.src = 'drawpad.html?v=' + Date.now();
+let points = [];
+let drawing = false;
 
-  // Copy code from drawpad
-  copyBtn.addEventListener('click', async () => {
-    // Ask drawpad for points
-    const points = await new Promise(resolve => {
-      const handler = e => {
-        if (e.data?.type === 'sendPoints') {
-          resolve(e.data.points);
-          window.removeEventListener('message', handler);
-        }
-      };
-      window.addEventListener('message', handler);
-      drawpad.contentWindow.postMessage({ type: 'getPoints' }, '*');
-    });
+// Resize
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+addEventListener('resize', resize);
+resize();
 
-    if (!points) return;
+/* --------- PASTEL SETTINGS --------- */
+ctx.globalCompositeOperation = 'multiply';
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
 
-    const codeLines = points.map(p => `ctx.fillRect(${p.x},${p.y},4,4);`);
-    const fullCode = `const canvas = document.getElementById('draw');\nconst ctx = canvas.getContext('2d');\n` + codeLines.join('\n');
+function drawPastel(x, y, last) {
+  ctx.strokeStyle = 'rgba(200,220,255,0.08)';
+  ctx.lineWidth = 18;
 
-    try {
-      await navigator.clipboard.writeText(fullCode);
-      copyBtn.textContent = "Copied!";
-    } catch {
-      copyBtn.textContent = "Failed!";
-    }
+  ctx.beginPath();
+  if (last) ctx.moveTo(last.x, last.y);
+  ctx.lineTo(x, y);
+  ctx.stroke();
 
-    setTimeout(() => copyBtn.textContent = "Copy Code", 1000);
-  });
+  // Chalk grain
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath();
+    ctx.arc(
+      x + (Math.random() - 0.5) * 8,
+      y + (Math.random() - 0.5) * 8,
+      Math.random() * 2,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
 
-  // Touch visual feedback
-  copyBtn.addEventListener('touchstart', e => {
-    e.preventDefault();
-    copyBtn.style.background = 'rgba(255,255,255,0.2)';
-  });
-  copyBtn.addEventListener('touchend', e => {
-    e.preventDefault();
-    copyBtn.style.background = 'rgba(18,30,60,0.36)';
-    copyBtn.click();
-  });
+/* --------- INPUT --------- */
+function start(x, y) {
+  drawing = true;
+  points.push({ x, y });
+}
+
+function move(x, y) {
+  if (!drawing) return;
+  const last = points[points.length - 1];
+  drawPastel(x, y, last);
+  points.push({ x, y });
+}
+
+function end() {
+  drawing = false;
+}
+
+/* Mouse */
+canvas.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+canvas.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+canvas.addEventListener('mouseup', end);
+canvas.addEventListener('mouseleave', end);
+
+/* Touch */
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  start(t.clientX, t.clientY);
+});
+canvas.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  move(t.clientX, t.clientY);
+});
+canvas.addEventListener('touchend', end);
+
+/* --------- EXPORT --------- */
+window.addEventListener('message', e => {
+  if (e.data?.type === 'getPoints') {
+    parent.postMessage({
+      type: 'sendPoints',
+      points
+    }, '*');
+  }
+});
 </script>
 
 </body>
